@@ -23,7 +23,7 @@ attention_functions=[
     "printf"
 ]
 
-command_execution_function=[
+command_execution_functions=[
     "system",
     "execve",
     "popen",
@@ -66,11 +66,34 @@ def getFuncAddr(func_name):
         return addr
     return False
 
+#查找参数地址，并添加注释
 def getArgAddr(func_addr,argNum):
     args=[]
     for i in idaapi.get_arg_addrs(func_addr):
         idc.set_cmt(i,"addr: 0x%x" % (func_addr),0)#设置注释
         idc.set_color(i,CIC_ITEM,0x00ff00)
         args.append(i)
+    return args
     
-def getArg
+#
+def getArgs(addr):
+    x86mov=['mov','lea']
+    #如果是参数不是寄存器传值(寄存器传值的返回值为1)
+    if get_operand_type(addr,1) !=1:
+        arg=idc.print_operand(addr,1)
+        set_cmt()
+        
+def audit(func_name):
+    func_addr=getFuncAddr(func_name)
+    while 
+        
+def main_Audit():
+    print('Auditing dangerous functions ......')
+    for i in dangerous_functions:
+        audit(i)
+    print('Auditing attention function ......')
+    for i in attention_functions:
+        audit(i)
+    print('Auditing attention function ......')
+    for i in command_execution_functions:
+        audit(i)
