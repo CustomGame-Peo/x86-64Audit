@@ -67,7 +67,7 @@ def getFuncAddr(func_name):
     return False
 
 #查找参数地址，并添加注释
-def getArgAddr(func_addr,argNum):
+def getArgAddr(func_addr):
     args=[]
     for i in idaapi.get_arg_addrs(func_addr):
         idc.set_cmt(i,"addr: 0x%x" % (func_addr),0)#设置注释
@@ -86,7 +86,7 @@ def getArgs(addr):
             return arg[7:]
         else:
             return arg
-    #如果是寄存器的话,需要递归处理找到最后一个不是寄存器的参数
+    #如果是寄存器的话,找到其来源即可
     func_start=idaapi.get_func(addr).start_ea
     arg_addr=addr
     target=idc.print_operand(addr,1)
@@ -94,21 +94,34 @@ def getArgs(addr):
         arg_addr=idc.get_first_cref_to(arg_addr)
         if idc.idc.print_insn_mnem(arg_addr) in x86mov and idc.print_operand(arg_addr,0)==target:
             return idc.print_operand(arg_addr,1)
-    pass
+
 def auditFormat(func_addr,func_name,arg_num):
-    pass
-    
-    
-def auditAddr(func_addr,func_name,arg_num):
     #local buf size
     local_buf_size=idc.get_func_attr(func_addr,FUNCATTR_FRSIZE)
     if local_buf_size==BADADDR:
         local_buf_size="get fail"
     else:
         local_buf_size="0x%x"%local_buf_size
-    return 
-    #get arg
+    #get all args
+    args=getFuncAddr(func_addr)
+    
     pass
+    
+    
+def auditAddr(func_addr,func_name):
+    #local buf size
+    local_buf_size=idc.get_func_attr(func_addr,FUNCATTR_FRSIZE)
+    if local_buf_size==BADADDR:
+        local_buf_size="get fail"
+    else:
+        local_buf_size="0x%x"%local_buf_size
+    
+    temp_args=getArgAddr(func_addr)
+    args=[]
+    for i in xrange(temp_args):
+        args.append(getArgs(i))
+    args.append(local_buf_size)
+    return args
     
        
 def audit(func_name):
@@ -124,10 +137,23 @@ def audit(func_name):
     else:
         print("The %s function didn't write in the describe arg num of function array,please add it to,such as add to `two_arg_function` arary" % func_name)
         return
+        
+    table_head=["func_name","addr"]
+    for num in xrange(0,arg_num):
+        table_head.append("arg"+str(num+1))
     if func_name in format_function_offset_dict:
-        auditFormat(func_addr,func_name,arg_num)
-    else:
-        auditAddr(func_addr,func_name,argnum)
+        table_head.append("format&value[string_addr, num of '%', fmt_arg...]")
+    table_head.append("local_buf_size")
+    table=PrettyTable(table_head)
+    
+    while func_addr!=BADADDR:
+        if func_name in format_function_offset_dict:
+            info=auditFormat(func_addr,func_name,arg_num)
+        else:
+            info=auditAddr(func_addr,func_name,argnum)
+        table.add_row(info)
+        #----------------
+    print(table)
         
 def main_Audit():
     print('Auditing dangerous functions ......')
