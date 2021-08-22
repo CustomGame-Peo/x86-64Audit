@@ -95,6 +95,18 @@ def getArgs(addr):
         if idc.idc.print_insn_mnem(arg_addr) in x86mov and idc.print_operand(arg_addr,0)==target:
             return idc.print_operand(arg_addr,1)
 
+
+
+#获取格式化字符串，并判断其是否有异常
+def formatString():
+    s=''
+    return s
+
+def GetFormatArgs(func_addr,index):
+    #获取普通的
+    arg=getArgs(func_addr)
+    return arg+formatString(func_addr,arg[index],index)
+
 def auditFormat(func_addr,func_name,arg_num):
     #local buf size
     local_buf_size=idc.get_func_attr(func_addr,FUNCATTR_FRSIZE)
@@ -102,9 +114,22 @@ def auditFormat(func_addr,func_name,arg_num):
         local_buf_size="get fail"
     else:
         local_buf_size="0x%x"%local_buf_size
-    #get all args
-    args=getFuncAddr(func_addr)
+        
+    table_head=["func_name","addr"]
+    for num in xrange(0,arg_num):
+        table_head.append("arg"+str(num+1))
+    if func_name in format_function_offset_dict:
+        table_head.append("format&value[string_addr, num of '%', fmt_arg...]")
+    table_head.append("local_buf_size")
+    table=PrettyTable(table_head)
     
+    index=format_function_offset_dict[func_name]
+    #get all args addr
+    args=getFuncAddr(func_addr)
+    xrefs=CodeRefsTo(func_addr,0)
+    for xref in xrefs:
+        set_color(xref,CIC_ITEM,0x00ff00)
+        table.add_row([hex(xref)]+GetFormatArgs(func_addr,arg_num)+[hex(local_buf_size)])
     pass
     
     
@@ -116,12 +141,20 @@ def auditAddr(func_addr,func_name):
     else:
         local_buf_size="0x%x"%local_buf_size
     
+    table_head=["func_name","addr"]
+    for num in xrange(0,arg_num):
+        table_head.append("arg"+str(num+1))
+    if func_name in format_function_offset_dict:
+        table_head.append("format&value[string_addr, num of '%', fmt_arg...]")
+    table_head.append("local_buf_size")
+    table=PrettyTable(table_head)
+    
     temp_args=getArgAddr(func_addr)
-    args=[]
+    args=[func_name,func_addr]
     for i in xrange(temp_args):
         args.append(getArgs(i))
     args.append(local_buf_size)
-    return args
+    table.add_row(args)
     
        
 def audit(func_name):
@@ -138,20 +171,14 @@ def audit(func_name):
         print("The %s function didn't write in the describe arg num of function array,please add it to,such as add to `two_arg_function` arary" % func_name)
         return
         
-    table_head=["func_name","addr"]
-    for num in xrange(0,arg_num):
-        table_head.append("arg"+str(num+1))
-    if func_name in format_function_offset_dict:
-        table_head.append("format&value[string_addr, num of '%', fmt_arg...]")
-    table_head.append("local_buf_size")
-    table=PrettyTable(table_head)
+    
     
     while func_addr!=BADADDR:
         if func_name in format_function_offset_dict:
-            info=auditFormat(func_addr,func_name,arg_num)
+            auditFormat(func_addr,func_name,arg_num)
         else:
-            info=auditAddr(func_addr,func_name,argnum)
-        table.add_row(info)
+            auditAddr(func_addr,func_name,argnum)
+        
         #----------------
     print(table)
         
