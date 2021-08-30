@@ -74,7 +74,10 @@ def getArgAddr(func_addr):
         idc.set_color(i,CIC_ITEM,0x00ff00)
         args.append(i)
     return args
-    
+ 
+def findArg():
+    pass
+ 
 #
 def getArgs(addr):
     x86mov=['mov','lea']
@@ -86,20 +89,23 @@ def getArgs(addr):
             return arg[7:]
         else:
             return arg
-    #如果是寄存器的话,找到其来源即可
+    #如果是寄存器的话,一直找到其来源
     func_start=idaapi.get_func(addr).start_ea
     arg_addr=addr
     target=idc.print_operand(addr,1)
     while arg_addr<=start_ea:
         arg_addr=idc.get_first_cref_to(arg_addr)
         if idc.idc.print_insn_mnem(arg_addr) in x86mov and idc.print_operand(arg_addr,0)==target:
-            return idc.print_operand(arg_addr,1)
+            args.append(idc.print_operand(arg_addr,1))
+    
+    return args
 
 
 
 #获取格式化字符串，并判断其是否有异常
 def formatString():
     s=''
+    
     return s
 
 def GetFormatArgs(func_addr,index):
