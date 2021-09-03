@@ -75,10 +75,7 @@ def getArgAddr(func_addr):
         args.append(i)
     return args
  
-def findArg():
-    pass
- 
-#
+#获得函数的参数地址
 def getArgs(addr):
     x86mov=['mov','lea']
     args=[]
@@ -103,10 +100,15 @@ def getArgs(addr):
 
 
 #获取格式化字符串，并判断其是否有异常
-def formatString():
+def formatString(func_addr,argName):
     s=''
-    
-    return s
+    format_arg_addr=idc.LocByName(argName)
+    #查看对应位置是否为字符串
+    if idc.GetStringType(format)==0:
+        s+=hex(format_arg_addr)
+    else:
+        s+='This function maybe dangous!'
+    return [s]
 
 def GetFormatArgs(func_addr,index):
     #获取普通的
@@ -135,10 +137,10 @@ def auditFormat(func_addr,func_name,arg_num):
     xrefs=CodeRefsTo(func_addr,0)
     for xref in xrefs:
         set_color(xref,CIC_ITEM,0x00ff00)
-        table.add_row([hex(xref)]+GetFormatArgs(func_addr,arg_num)+[hex(local_buf_size)])
+        table.add_row([hex(xref)]+GetFormatArgs(func_addr,index)+[hex(local_buf_size)])
     pass
     
-    
+#审计普通函数参数的地址
 def auditAddr(func_addr,func_name):
     #local buf size
     local_buf_size=idc.get_func_attr(func_addr,FUNCATTR_FRSIZE)
@@ -155,12 +157,16 @@ def auditAddr(func_addr,func_name):
     table_head.append("local_buf_size")
     table=PrettyTable(table_head)
     
-    temp_args=getArgAddr(func_addr)
-    args=[func_name,func_addr]
-    for i in xrange(temp_args):
-        args.append(getArgs(i))
-    args.append(local_buf_size)
-    table.add_row(args)
+    if idc.SegName(func_addr)=='extern':
+        addrs=list(idauntils.CodeRefsTo(func_addr))
+    
+    for i in addrs:
+        temp_args=getArgAddr(i)
+        args=[func_name,i]
+        for i in xrange(temp_args):
+            args.append(getArgs(i))
+        args.append(local_buf_size)
+        table.add_row(args)
     
        
 def audit(func_name):
@@ -177,13 +183,14 @@ def audit(func_name):
         print("The %s function didn't write in the describe arg num of function array,please add it to,such as add to `two_arg_function` arary" % func_name)
         return
         
+    if idc.SegName(func_addr)=='extern':
+        addrs=list(idauntils.CodeRefsTo(func_addr))
     
-    
-    while func_addr!=BADADDR:
+    for i in range(addrs):
         if func_name in format_function_offset_dict:
-            auditFormat(func_addr,func_name,arg_num)
+            auditFormat(i,func_name,arg_num)
         else:
-            auditAddr(func_addr,func_name,argnum)
+            auditAddr(i,func_name,argnum)
         
         #----------------
     print(table)
